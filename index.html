@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Finanças</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #222222;
+    --hint: #8e8e93;
+    --button: #2481cc;
+    --button-text: #ffffff;
+    --secondary-bg: #f0f0f0;
+    --destructive: #e53935;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px 16px 32px;
+  }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  .aviso {
+    background: var(--secondary-bg);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 6px;
+    border: none;
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--button);
+    color: var(--button-text);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--hint);
+    margin: 14px 0 6px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type="number"], input[type="text"], input[type="date"], input[type="month"] {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--secondary-bg);
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+  .segmentado {
+    display: flex;
+    gap: 6px;
+  }
+  .segmentado button {
+    flex: 1;
+    padding: 10px 4px;
+    border: none;
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .segmentado button.selected {
+    background: var(--button);
+    color: var(--button-text);
+  }
+  .btn-principal {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    background: var(--button);
+    color: var(--button-text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-principal:disabled { opacity: 0.6; }
+  .btn-perigo { background: var(--destructive); }
+  .resultado {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    min-height: 20px;
+  }
+  .resultado.vazio { display: none; }
+  .resultado.erro { color: var(--destructive); }
+</style>
+</head>
+<body>
+
+<div id="aviso-fora" class="aviso" style="display:none">
+  ⚠️ Abra este app pelo botão de menu do bot no Telegram (ícone ao lado da caixa de mensagem).
+</div>
+
+<div id="app" style="display:none">
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="lancar">📥 Lançar</button>
+    <button class="tab-btn" data-tab="saldo">💰 Saldo</button>
+    <button class="tab-btn" data-tab="relatorio">📊 Relatório</button>
+    <button class="tab-btn" data-tab="resetar">🔄 Resetar</button>
+  </nav>
+
+  <!-- LANÇAR -->
+  <section id="tab-lancar" class="tab-panel active">
+    <h2>Novo lançamento</h2>
+    <form id="form-lancar">
+      <label>Tipo</label>
+      <div class="segmentado" id="tipo-lancar">
+        <button type="button" data-valor="entrou" class="selected">💵 Entrou</button>
+        <button type="button" data-valor="saiu">💸 Saiu</button>
+        <button type="button" data-valor="diario">🛒 Diário</button>
+      </div>
+
+      <label>Valor (R$)</label>
+      <input type="number" id="valor-lancar" step="0.01" min="0.01" inputmode="decimal" required>
+
+      <label>Data</label>
+      <input type="date" id="data-lancar" required>
+
+      <label>Descrição (opcional)</label>
+      <input type="text" id="descricao-lancar" placeholder="Ex: mercado, salário...">
+
+      <button type="submit" class="btn-principal" id="btn-lancar">Lançar</button>
+    </form>
+  </section>
+
+  <!-- SALDO -->
+  <section id="tab-saldo" class="tab-panel">
+    <h2>Consultar saldo</h2>
+    <label>Data</label>
+    <input type="date" id="data-saldo">
+    <button type="button" class="btn-principal" id="btn-saldo">Consultar</button>
+    <div class="resultado vazio" id="resultado-saldo"></div>
+  </section>
+
+  <!-- RELATÓRIO -->
+  <section id="tab-relatorio" class="tab-panel">
+    <h2>Relatório</h2>
+    <label>Categoria</label>
+    <div class="segmentado" id="tipo-relatorio">
+      <button type="button" data-valor="entrou" class="selected">💵 Entrou</button>
+      <button type="button" data-valor="saiu">💸 Saiu</button>
+      <button type="button" data-valor="diario">🛒 Diário</button>
+      <button type="button" data-valor="resumo">📈 Resumo</button>
+    </div>
+
+    <label>Período</label>
+    <div class="segmentado" id="escopo-relatorio">
+      <button type="button" data-valor="dia" class="selected">Um dia</button>
+      <button type="button" data-valor="mes">Mês inteiro</button>
+    </div>
+
+    <div id="campo-data-relatorio">
+      <label>Data</label>
+      <input type="date" id="data-relatorio">
+    </div>
+    <div id="campo-mes-relatorio" style="display:none">
+      <label>Mês</label>
+      <input type="month" id="mes-relatorio">
+    </div>
+
+    <button type="button" class="btn-principal" id="btn-relatorio">Consultar</button>
+    <div class="resultado vazio" id="resultado-relatorio"></div>
+  </section>
+
+  <!-- RESETAR -->
+  <section id="tab-resetar" class="tab-panel">
+    <h2>Zerar lançamento de um dia</h2>
+    <label>Tipo</label>
+    <div class="segmentado" id="tipo-resetar">
+      <button type="button" data-valor="entrou" class="selected">💵 Entrou</button>
+      <button type="button" data-valor="saiu">💸 Saiu</button>
+      <button type="button" data-valor="diario">🛒 Diário</button>
+    </div>
+
+    <label>Data</label>
+    <input type="date" id="data-resetar">
+
+    <button type="button" class="btn-principal btn-perigo" id="btn-resetar">Zerar</button>
+  </section>
+
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO — cole aqui a URL do seu Web App do Apps Script
+// (a mesma URL que está na propriedade WEBHOOK_URL do seu projeto)
+// ============================================================
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyglll9rb8admb-pbRaIq6679NbIPPC3YvGjef1j1lodYhbRirWxMzifySI7hr9TAiV/exec";
+
+const LABELS_TIPO = { entrou: "Entrou", saiu: "Saiu", diario: "Diário" };
+
+const tg = window.Telegram && window.Telegram.WebApp;
+
+let tipoLancar = "entrou";
+let tipoRelatorio = "entrou";
+let escopoRelatorio = "dia";
+let tipoResetar = "entrou";
+
+function hojeISO() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+function aplicarTema() {
+  if (!tg) return;
+  const tp = tg.themeParams || {};
+  const root = document.documentElement.style;
+  root.setProperty("--bg", tp.bg_color || "#ffffff");
+  root.setProperty("--text", tp.text_color || "#222222");
+  root.setProperty("--hint", tp.hint_color || "#8e8e93");
+  root.setProperty("--button", tp.button_color || "#2481cc");
+  root.setProperty("--button-text", tp.button_text_color || "#ffffff");
+  root.setProperty("--secondary-bg", tp.secondary_bg_color || "#f0f0f0");
+  root.setProperty("--destructive", tp.destructive_text_color || "#e53935");
+}
+
+function mostrarAviso(mensagem) {
+  if (tg && tg.showAlert) tg.showAlert(mensagem);
+  else alert(mensagem);
+}
+
+function confirmarAcao(mensagem, callback) {
+  if (tg && tg.showConfirm) tg.showConfirm(mensagem, callback);
+  else callback(confirm(mensagem));
+}
+
+// --- inicialização ---
+if (!tg || !tg.initData) {
+  document.getElementById("aviso-fora").style.display = "block";
+} else {
+  tg.ready();
+  tg.expand();
+  aplicarTema();
+  tg.onEvent("themeChanged", aplicarTema);
+  document.getElementById("app").style.display = "block";
+
+  document.getElementById("data-lancar").value = hojeISO();
+  document.getElementById("data-saldo").value = hojeISO();
+  document.getElementById("data-relatorio").value = hojeISO();
+  document.getElementById("data-resetar").value = hojeISO();
+  document.getElementById("mes-relatorio").value = hojeISO().slice(0, 7);
+}
+
+// --- abas ---
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// --- segmentados (tipo / escopo) ---
+function configurarSegmentado(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  container.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach(x => x.classList.remove("selected"));
+      b.classList.add("selected");
+      onChange(b.dataset.valor);
+    });
+  });
+}
+configurarSegmentado("tipo-lancar", v => tipoLancar = v);
+configurarSegmentado("tipo-resetar", v => tipoResetar = v);
+configurarSegmentado("tipo-relatorio", v => tipoRelatorio = v);
+configurarSegmentado("escopo-relatorio", v => {
+  escopoRelatorio = v;
+  document.getElementById("campo-data-relatorio").style.display = v === "dia" ? "block" : "none";
+  document.getElementById("campo-mes-relatorio").style.display = v === "mes" ? "block" : "none";
+});
+
+// --- chamadas ao backend ---
+async function chamarLeitura(params) {
+  const url = new URL(APPS_SCRIPT_URL);
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== null && v !== undefined && v !== "") url.searchParams.set(k, v);
+  });
+  url.searchParams.set("initData", tg.initData);
+  const resp = await fetch(url.toString());
+  return resp.json();
+}
+
+async function chamarEscrita(payload) {
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ ...payload, initData: tg.initData }),
+  });
+  return resp.json();
+}
+
+function mostrarResultado(el, resposta) {
+  el.classList.remove("vazio");
+  if (resposta.ok) {
+    el.textContent = resposta.texto;
+    el.classList.remove("erro");
+  } else {
+    el.textContent = "⚠️ " + (resposta.erro || "Erro desconhecido.");
+    el.classList.add("erro");
+  }
+}
+
+// --- lançar ---
+document.getElementById("form-lancar").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById("btn-lancar");
+  const payload = {
+    acao: "lancar",
+    tipo: tipoLancar,
+    valor: document.getElementById("valor-lancar").value,
+    data: document.getElementById("data-lancar").value,
+    descricao: document.getElementById("descricao-lancar").value,
+  };
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  try {
+    const resposta = await chamarEscrita(payload);
+    if (resposta.ok) {
+      mostrarAviso(resposta.texto);
+      document.getElementById("form-lancar").reset();
+      document.getElementById("data-lancar").value = hojeISO();
+    } else {
+      mostrarAviso("Erro: " + resposta.erro);
+    }
+  } catch (err) {
+    mostrarAviso("Falha de conexão: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Lançar";
+  }
+});
+
+// --- saldo ---
+document.getElementById("btn-saldo").addEventListener("click", async () => {
+  const resultado = document.getElementById("resultado-saldo");
+  resultado.classList.remove("vazio");
+  resultado.textContent = "Consultando...";
+  try {
+    const resposta = await chamarLeitura({ acao: "saldo", data: document.getElementById("data-saldo").value });
+    mostrarResultado(resultado, resposta);
+  } catch (err) {
+    resultado.textContent = "⚠️ Falha de conexão: " + err.message;
+    resultado.classList.add("erro");
+  }
+});
+
+// --- relatório ---
+document.getElementById("btn-relatorio").addEventListener("click", async () => {
+  const resultado = document.getElementById("resultado-relatorio");
+  resultado.classList.remove("vazio");
+  resultado.textContent = "Consultando...";
+
+  const params = {
+    acao: tipoRelatorio === "resumo" ? "resumo" : "historico",
+    tipo: tipoRelatorio,
+    escopo: escopoRelatorio,
+  };
+  if (escopoRelatorio === "mes") {
+    const [ano, mes] = document.getElementById("mes-relatorio").value.split("-");
+    params.mes = mes;
+    params.ano = ano;
+  } else {
+    params.data = document.getElementById("data-relatorio").value;
+  }
+
+  try {
+    const resposta = await chamarLeitura(params);
+    mostrarResultado(resultado, resposta);
+  } catch (err) {
+    resultado.textContent = "⚠️ Falha de conexão: " + err.message;
+    resultado.classList.add("erro");
+  }
+});
+
+// --- resetar ---
+document.getElementById("btn-resetar").addEventListener("click", () => {
+  const data = document.getElementById("data-resetar").value;
+  const mensagem = `Confirma zerar ${LABELS_TIPO[tipoResetar]} do dia ${data.split("-").reverse().join("/")}? Essa ação não pode ser desfeita.`;
+
+  confirmarAcao(mensagem, async (confirmado) => {
+    if (!confirmado) return;
+    const btn = document.getElementById("btn-resetar");
+    btn.disabled = true;
+    try {
+      const resposta = await chamarEscrita({ acao: "resetar", tipo: tipoResetar, data });
+      if (resposta.ok) mostrarAviso(resposta.texto);
+      else mostrarAviso("Erro: " + resposta.erro);
+    } catch (err) {
+      mostrarAviso("Falha de conexão: " + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+</body>
+</html>
