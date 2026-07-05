@@ -72,8 +72,6 @@
     color: var(--text);
     font-size: 15px;
   }
-  .campo-data { display: flex; flex-direction: column; gap: 6px; }
-  .data-manual { font-size: 13px; padding: 9px 12px; color: var(--text); }
   .segmentado {
     display: flex;
     gap: 6px;
@@ -106,18 +104,6 @@
   }
   .btn-principal:disabled { opacity: 0.6; }
   .btn-perigo { background: var(--destructive); }
-  .resultado {
-    margin-top: 16px;
-    padding: 14px;
-    border-radius: 10px;
-    background: var(--secondary-bg);
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    min-height: 20px;
-  }
-  .resultado.vazio { display: none; }
-  .resultado.erro { color: var(--destructive); }
 </style>
 </head>
 <body>
@@ -150,10 +136,7 @@
       <input type="number" id="valor-lancar" step="0.01" min="0.01" inputmode="decimal" required>
 
       <label>Data</label>
-      <div class="campo-data">
-        <input type="date" id="data-lancar" required>
-        <input type="text" id="data-lancar-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
-      </div>
+      <input type="text" id="data-lancar" inputmode="numeric" placeholder="DD/MM/AAAA (ou só DD, ou DD/MM)" maxlength="10">
 
       <label>Descrição (opcional)</label>
       <input type="text" id="descricao-lancar" placeholder="Ex: mercado, salário...">
@@ -166,12 +149,8 @@
   <section id="tab-saldo" class="tab-panel">
     <h2>Consultar saldo</h2>
     <label>Data</label>
-    <div class="campo-data">
-      <input type="date" id="data-saldo">
-      <input type="text" id="data-saldo-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
-    </div>
+    <input type="text" id="data-saldo" inputmode="numeric" placeholder="DD/MM/AAAA (ou só DD, ou DD/MM)" maxlength="10">
     <button type="button" class="btn-principal" id="btn-saldo">Consultar</button>
-    <div class="resultado vazio" id="resultado-saldo"></div>
   </section>
 
   <!-- RELATÓRIO -->
@@ -193,21 +172,14 @@
 
     <div id="campo-data-relatorio">
       <label>Data</label>
-      <div class="campo-data">
-        <input type="date" id="data-relatorio">
-        <input type="text" id="data-relatorio-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
-      </div>
+      <input type="text" id="data-relatorio" inputmode="numeric" placeholder="DD/MM/AAAA (ou só DD, ou DD/MM)" maxlength="10">
     </div>
     <div id="campo-mes-relatorio" style="display:none">
       <label>Mês</label>
-      <div class="campo-data">
-        <input type="month" id="mes-relatorio">
-        <input type="text" id="mes-relatorio-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: MM/AAAA" maxlength="7">
-      </div>
+      <input type="text" id="mes-relatorio" inputmode="numeric" placeholder="MM/AAAA (ou só MM)" maxlength="7">
     </div>
 
     <button type="button" class="btn-principal" id="btn-relatorio">Consultar</button>
-    <div class="resultado vazio" id="resultado-relatorio"></div>
   </section>
 
   <!-- RESETAR -->
@@ -221,10 +193,7 @@
     </div>
 
     <label>Data</label>
-    <div class="campo-data">
-      <input type="date" id="data-resetar">
-      <input type="text" id="data-resetar-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
-    </div>
+    <input type="text" id="data-resetar" inputmode="numeric" placeholder="DD/MM/AAAA (ou só DD, ou DD/MM)" maxlength="10">
 
     <button type="button" class="btn-principal btn-perigo" id="btn-resetar">Zerar</button>
   </section>
@@ -247,83 +216,91 @@ let tipoRelatorio = "entrou";
 let escopoRelatorio = "dia";
 let tipoResetar = "entrou";
 
-function hojeISO() {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d - tz).toISOString().slice(0, 10);
+function hojeFormatado() {
+  const hoje = new Date();
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  return `${dia}/${mes}/${hoje.getFullYear()}`;
 }
 
-// Converte "DDMMAAAA" (com ou sem barras) em "AAAA-MM-DD"
-function converterDataBRparaISO(digitos) {
-  if (digitos.length !== 8) return null;
-  const dia = digitos.slice(0, 2);
-  const mes = digitos.slice(2, 4);
-  const ano = digitos.slice(4, 8);
-  const d = Number(dia), m = Number(mes);
-  if (d < 1 || d > 31 || m < 1 || m > 12) return null;
-  return `${ano}-${mes}-${dia}`;
+function mesAtualFormatado() {
+  const hoje = new Date();
+  return `${String(hoje.getMonth() + 1).padStart(2, "0")}/${hoje.getFullYear()}`;
 }
 
-function converterISOparaBR(iso) {
-  if (!iso) return "";
-  const [ano, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${ano}`;
+function digitosDe(valor) {
+  return String(valor || "").replace(/\D/g, "");
 }
 
-// Converte "MMAAAA" em "AAAA-MM"
-function converterMesBRparaISO(digitos) {
-  if (digitos.length !== 6) return null;
-  const mes = digitos.slice(0, 2);
-  const ano = digitos.slice(2, 6);
-  if (Number(mes) < 1 || Number(mes) > 12) return null;
-  return `${ano}-${mes}`;
-}
-
-function converterMesISOparaBR(iso) {
-  if (!iso) return "";
-  const [ano, mes] = iso.split("-");
-  return `${mes}/${ano}`;
-}
-
-// Liga um <input type="date"> a um <input type="text"> ao lado:
-// escolher no calendário atualiza o texto, e digitar 8 dígitos atualiza o calendário.
-function configurarCampoData(idData, idTexto) {
-  const inputData = document.getElementById(idData);
-  const inputTexto = document.getElementById(idTexto);
-
-  inputData.addEventListener("change", () => {
-    inputTexto.value = converterISOparaBR(inputData.value);
-  });
-
-  inputTexto.addEventListener("input", () => {
-    const digitos = inputTexto.value.replace(/\D/g, "").slice(0, 8);
-    inputTexto.value = digitos.length > 4
-      ? `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
-      : digitos.length > 2
-        ? `${digitos.slice(0, 2)}/${digitos.slice(2)}`
-        : digitos;
-
-    const iso = converterDataBRparaISO(digitos);
-    if (iso) inputData.value = iso;
+// Enquanto digita, insere as barras automaticamente (DD/MM/AAAA ou MM/AAAA)
+function formatarEnquantoDigita(input, maxDigitos) {
+  input.addEventListener("input", () => {
+    const digitos = digitosDe(input.value).slice(0, maxDigitos);
+    if (maxDigitos === 8) {
+      input.value = digitos.length > 4
+        ? `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
+        : digitos.length > 2
+          ? `${digitos.slice(0, 2)}/${digitos.slice(2)}`
+          : digitos;
+    } else {
+      input.value = digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2)}` : digitos;
+    }
   });
 }
 
-// Mesma ideia, mas para o campo de mês (MM/AAAA)
-function configurarCampoMes(idMes, idTexto) {
-  const inputMes = document.getElementById(idMes);
-  const inputTexto = document.getElementById(idTexto);
+// Interpreta o texto digitado como data, aceitando:
+// vazio (hoje), "DD" (dia, mês/ano atuais), "DDMM" (dia/mês, ano atual) ou "DDMMAAAA" (completo)
+// Retorna "AAAA-MM-DD" ou null se inválido.
+function resolverDataDigitada(idTexto) {
+  const digitos = digitosDe(document.getElementById(idTexto).value);
+  const hoje = new Date();
+  let dia, mes, ano;
 
-  inputMes.addEventListener("change", () => {
-    inputTexto.value = converterMesISOparaBR(inputMes.value);
-  });
+  if (digitos.length === 0) {
+    dia = hoje.getDate();
+    mes = hoje.getMonth() + 1;
+    ano = hoje.getFullYear();
+  } else if (digitos.length <= 2) {
+    dia = Number(digitos);
+    mes = hoje.getMonth() + 1;
+    ano = hoje.getFullYear();
+  } else if (digitos.length <= 4) {
+    dia = Number(digitos.slice(0, 2));
+    mes = Number(digitos.slice(2));
+    ano = hoje.getFullYear();
+  } else if (digitos.length === 8) {
+    dia = Number(digitos.slice(0, 2));
+    mes = Number(digitos.slice(2, 4));
+    ano = Number(digitos.slice(4, 8));
+  } else {
+    return null;
+  }
 
-  inputTexto.addEventListener("input", () => {
-    const digitos = inputTexto.value.replace(/\D/g, "").slice(0, 6);
-    inputTexto.value = digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2)}` : digitos;
+  if (!dia || dia < 1 || dia > 31 || !mes || mes < 1 || mes > 12) return null;
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
 
-    const iso = converterMesBRparaISO(digitos);
-    if (iso) inputMes.value = iso;
-  });
+// Mesma ideia, para o campo de mês: vazio (mês atual), "MM" ou "MMAAAA"
+function resolverMesDigitado(idTexto) {
+  const digitos = digitosDe(document.getElementById(idTexto).value);
+  const hoje = new Date();
+  let mes, ano;
+
+  if (digitos.length === 0) {
+    mes = hoje.getMonth() + 1;
+    ano = hoje.getFullYear();
+  } else if (digitos.length <= 2) {
+    mes = Number(digitos);
+    ano = hoje.getFullYear();
+  } else if (digitos.length === 6) {
+    mes = Number(digitos.slice(0, 2));
+    ano = Number(digitos.slice(2, 6));
+  } else {
+    return null;
+  }
+
+  if (!mes || mes < 1 || mes > 12) return null;
+  return `${ano}-${String(mes).padStart(2, "0")}`;
 }
 
 function aplicarTema() {
@@ -359,23 +336,17 @@ if (!tg || !tg.initData) {
   tg.onEvent("themeChanged", aplicarTema);
   document.getElementById("app").style.display = "block";
 
-  document.getElementById("data-lancar").value = hojeISO();
-  document.getElementById("data-saldo").value = hojeISO();
-  document.getElementById("data-relatorio").value = hojeISO();
-  document.getElementById("data-resetar").value = hojeISO();
-  document.getElementById("mes-relatorio").value = hojeISO().slice(0, 7);
+  document.getElementById("data-lancar").value = hojeFormatado();
+  document.getElementById("data-saldo").value = hojeFormatado();
+  document.getElementById("data-relatorio").value = hojeFormatado();
+  document.getElementById("data-resetar").value = hojeFormatado();
+  document.getElementById("mes-relatorio").value = mesAtualFormatado();
 
-  document.getElementById("data-lancar-texto").value = converterISOparaBR(hojeISO());
-  document.getElementById("data-saldo-texto").value = converterISOparaBR(hojeISO());
-  document.getElementById("data-relatorio-texto").value = converterISOparaBR(hojeISO());
-  document.getElementById("data-resetar-texto").value = converterISOparaBR(hojeISO());
-  document.getElementById("mes-relatorio-texto").value = converterMesISOparaBR(hojeISO().slice(0, 7));
-
-  configurarCampoData("data-lancar", "data-lancar-texto");
-  configurarCampoData("data-saldo", "data-saldo-texto");
-  configurarCampoData("data-relatorio", "data-relatorio-texto");
-  configurarCampoData("data-resetar", "data-resetar-texto");
-  configurarCampoMes("mes-relatorio", "mes-relatorio-texto");
+  formatarEnquantoDigita(document.getElementById("data-lancar"), 8);
+  formatarEnquantoDigita(document.getElementById("data-saldo"), 8);
+  formatarEnquantoDigita(document.getElementById("data-relatorio"), 8);
+  formatarEnquantoDigita(document.getElementById("data-resetar"), 8);
+  formatarEnquantoDigita(document.getElementById("mes-relatorio"), 6);
 }
 
 // --- abas ---
@@ -428,26 +399,20 @@ async function chamarEscrita(payload) {
   return resp.json();
 }
 
-function mostrarResultado(el, resposta) {
-  el.classList.remove("vazio");
-  if (resposta.ok) {
-    el.textContent = resposta.texto;
-    el.classList.remove("erro");
-  } else {
-    el.textContent = "⚠️ " + (resposta.erro || "Erro desconhecido.");
-    el.classList.add("erro");
-  }
-}
-
 // --- lançar ---
 document.getElementById("form-lancar").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const btn = document.getElementById("btn-lancar");
+  const dataResolvida = resolverDataDigitada("data-lancar");
+  if (!dataResolvida) {
+    mostrarAviso("⚠️ Data inválida. Digite DD, DD/MM ou DD/MM/AAAA.");
+    return;
+  }
   const payload = {
     acao: "lancar",
     tipo: tipoLancar,
     valor: document.getElementById("valor-lancar").value,
-    data: document.getElementById("data-lancar").value,
+    data: dataResolvida,
     descricao: document.getElementById("descricao-lancar").value,
   };
   btn.disabled = true;
@@ -455,10 +420,7 @@ document.getElementById("form-lancar").addEventListener("submit", async (ev) => 
   try {
     const resposta = await chamarEscrita(payload);
     if (resposta.ok) {
-      mostrarAviso(resposta.texto);
-      document.getElementById("form-lancar").reset();
-      document.getElementById("data-lancar").value = hojeISO();
-      document.getElementById("data-lancar-texto").value = converterISOparaBR(hojeISO());
+      tg.close();
     } else {
       mostrarAviso("Erro: " + resposta.erro);
     }
@@ -472,59 +434,88 @@ document.getElementById("form-lancar").addEventListener("submit", async (ev) => 
 
 // --- saldo ---
 document.getElementById("btn-saldo").addEventListener("click", async () => {
-  const resultado = document.getElementById("resultado-saldo");
-  resultado.classList.remove("vazio");
-  resultado.textContent = "Consultando...";
+  const dataResolvida = resolverDataDigitada("data-saldo");
+  if (!dataResolvida) {
+    mostrarAviso("⚠️ Data inválida. Digite DD, DD/MM ou DD/MM/AAAA.");
+    return;
+  }
+  const btn = document.getElementById("btn-saldo");
+  btn.disabled = true;
   try {
-    const resposta = await chamarLeitura({ acao: "saldo", data: document.getElementById("data-saldo").value });
-    mostrarResultado(resultado, resposta);
+    const resposta = await chamarLeitura({ acao: "saldo", data: dataResolvida });
+    if (resposta.ok) {
+      tg.close();
+    } else {
+      mostrarAviso("Erro: " + resposta.erro);
+    }
   } catch (err) {
-    resultado.textContent = "⚠️ Falha de conexão: " + err.message;
-    resultado.classList.add("erro");
+    mostrarAviso("Falha de conexão: " + err.message);
+  } finally {
+    btn.disabled = false;
   }
 });
 
 // --- relatório ---
 document.getElementById("btn-relatorio").addEventListener("click", async () => {
-  const resultado = document.getElementById("resultado-relatorio");
-  resultado.classList.remove("vazio");
-  resultado.textContent = "Consultando...";
-
   const params = {
     acao: tipoRelatorio === "resumo" ? "resumo" : "historico",
     tipo: tipoRelatorio,
     escopo: escopoRelatorio,
   };
   if (escopoRelatorio === "mes") {
-    const [ano, mes] = document.getElementById("mes-relatorio").value.split("-");
+    const mesResolvido = resolverMesDigitado("mes-relatorio");
+    if (!mesResolvido) {
+      mostrarAviso("⚠️ Mês inválido. Digite MM ou MM/AAAA.");
+      return;
+    }
+    const [ano, mes] = mesResolvido.split("-");
     params.mes = mes;
     params.ano = ano;
   } else {
-    params.data = document.getElementById("data-relatorio").value;
+    const dataResolvida = resolverDataDigitada("data-relatorio");
+    if (!dataResolvida) {
+      mostrarAviso("⚠️ Data inválida. Digite DD, DD/MM ou DD/MM/AAAA.");
+      return;
+    }
+    params.data = dataResolvida;
   }
 
+  const btn = document.getElementById("btn-relatorio");
+  btn.disabled = true;
   try {
     const resposta = await chamarLeitura(params);
-    mostrarResultado(resultado, resposta);
+    if (resposta.ok) {
+      tg.close();
+    } else {
+      mostrarAviso("Erro: " + resposta.erro);
+    }
   } catch (err) {
-    resultado.textContent = "⚠️ Falha de conexão: " + err.message;
-    resultado.classList.add("erro");
+    mostrarAviso("Falha de conexão: " + err.message);
+  } finally {
+    btn.disabled = false;
   }
 });
 
 // --- resetar ---
 document.getElementById("btn-resetar").addEventListener("click", () => {
-  const data = document.getElementById("data-resetar").value;
-  const mensagem = `Confirma zerar ${LABELS_TIPO[tipoResetar]} do dia ${data.split("-").reverse().join("/")}? Essa ação não pode ser desfeita.`;
+  const dataResolvida = resolverDataDigitada("data-resetar");
+  if (!dataResolvida) {
+    mostrarAviso("⚠️ Data inválida. Digite DD, DD/MM ou DD/MM/AAAA.");
+    return;
+  }
+  const mensagem = `Confirma zerar ${LABELS_TIPO[tipoResetar]} do dia ${dataResolvida.split("-").reverse().join("/")}? Essa ação não pode ser desfeita.`;
 
   confirmarAcao(mensagem, async (confirmado) => {
     if (!confirmado) return;
     const btn = document.getElementById("btn-resetar");
     btn.disabled = true;
     try {
-      const resposta = await chamarEscrita({ acao: "resetar", tipo: tipoResetar, data });
-      if (resposta.ok) mostrarAviso(resposta.texto);
-      else mostrarAviso("Erro: " + resposta.erro);
+      const resposta = await chamarEscrita({ acao: "resetar", tipo: tipoResetar, data: dataResolvida });
+      if (resposta.ok) {
+        tg.close();
+      } else {
+        mostrarAviso("Erro: " + resposta.erro);
+      }
     } catch (err) {
       mostrarAviso("Falha de conexão: " + err.message);
     } finally {
