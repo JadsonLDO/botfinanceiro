@@ -248,6 +248,16 @@ function formatarEnquantoDigita(input, maxDigitos) {
   });
 }
 
+// Ao tocar no campo, apaga o valor pré-preenchido (só na primeira vez —
+// se a pessoa já alterou o valor, tocar de novo não apaga o que ela digitou)
+function limparAoFocar(input, valorPadrao) {
+  input.addEventListener("focus", () => {
+    if (input.value === valorPadrao) {
+      input.value = "";
+    }
+  });
+}
+
 // Interpreta o texto digitado como data, aceitando:
 // vazio (hoje), "DD" (dia, mês/ano atuais), "DDMM" (dia/mês, ano atual) ou "DDMMAAAA" (completo)
 // Retorna "AAAA-MM-DD" ou null se inválido.
@@ -336,17 +346,26 @@ if (!tg || !tg.initData) {
   tg.onEvent("themeChanged", aplicarTema);
   document.getElementById("app").style.display = "block";
 
-  document.getElementById("data-lancar").value = hojeFormatado();
-  document.getElementById("data-saldo").value = hojeFormatado();
-  document.getElementById("data-relatorio").value = hojeFormatado();
-  document.getElementById("data-resetar").value = hojeFormatado();
-  document.getElementById("mes-relatorio").value = mesAtualFormatado();
+  const dataHojeTexto = hojeFormatado();
+  const mesAtualTexto = mesAtualFormatado();
+
+  document.getElementById("data-lancar").value = dataHojeTexto;
+  document.getElementById("data-saldo").value = dataHojeTexto;
+  document.getElementById("data-relatorio").value = dataHojeTexto;
+  document.getElementById("data-resetar").value = dataHojeTexto;
+  document.getElementById("mes-relatorio").value = mesAtualTexto;
 
   formatarEnquantoDigita(document.getElementById("data-lancar"), 8);
   formatarEnquantoDigita(document.getElementById("data-saldo"), 8);
   formatarEnquantoDigita(document.getElementById("data-relatorio"), 8);
   formatarEnquantoDigita(document.getElementById("data-resetar"), 8);
   formatarEnquantoDigita(document.getElementById("mes-relatorio"), 6);
+
+  limparAoFocar(document.getElementById("data-lancar"), dataHojeTexto);
+  limparAoFocar(document.getElementById("data-saldo"), dataHojeTexto);
+  limparAoFocar(document.getElementById("data-relatorio"), dataHojeTexto);
+  limparAoFocar(document.getElementById("data-resetar"), dataHojeTexto);
+  limparAoFocar(document.getElementById("mes-relatorio"), mesAtualTexto);
 }
 
 // --- abas ---
