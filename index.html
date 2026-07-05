@@ -72,6 +72,8 @@
     color: var(--text);
     font-size: 15px;
   }
+  .campo-data { display: flex; flex-direction: column; gap: 6px; }
+  .data-manual { font-size: 13px; padding: 9px 12px; color: var(--text); }
   .segmentado {
     display: flex;
     gap: 6px;
@@ -148,7 +150,10 @@
       <input type="number" id="valor-lancar" step="0.01" min="0.01" inputmode="decimal" required>
 
       <label>Data</label>
-      <input type="date" id="data-lancar" required>
+      <div class="campo-data">
+        <input type="date" id="data-lancar" required>
+        <input type="text" id="data-lancar-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
+      </div>
 
       <label>Descrição (opcional)</label>
       <input type="text" id="descricao-lancar" placeholder="Ex: mercado, salário...">
@@ -161,7 +166,10 @@
   <section id="tab-saldo" class="tab-panel">
     <h2>Consultar saldo</h2>
     <label>Data</label>
-    <input type="date" id="data-saldo">
+    <div class="campo-data">
+      <input type="date" id="data-saldo">
+      <input type="text" id="data-saldo-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
+    </div>
     <button type="button" class="btn-principal" id="btn-saldo">Consultar</button>
     <div class="resultado vazio" id="resultado-saldo"></div>
   </section>
@@ -185,11 +193,17 @@
 
     <div id="campo-data-relatorio">
       <label>Data</label>
-      <input type="date" id="data-relatorio">
+      <div class="campo-data">
+        <input type="date" id="data-relatorio">
+        <input type="text" id="data-relatorio-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
+      </div>
     </div>
     <div id="campo-mes-relatorio" style="display:none">
       <label>Mês</label>
-      <input type="month" id="mes-relatorio">
+      <div class="campo-data">
+        <input type="month" id="mes-relatorio">
+        <input type="text" id="mes-relatorio-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: MM/AAAA" maxlength="7">
+      </div>
     </div>
 
     <button type="button" class="btn-principal" id="btn-relatorio">Consultar</button>
@@ -207,7 +221,10 @@
     </div>
 
     <label>Data</label>
-    <input type="date" id="data-resetar">
+    <div class="campo-data">
+      <input type="date" id="data-resetar">
+      <input type="text" id="data-resetar-texto" class="data-manual" inputmode="numeric" placeholder="ou digite: DD/MM/AAAA" maxlength="10">
+    </div>
 
     <button type="button" class="btn-principal btn-perigo" id="btn-resetar">Zerar</button>
   </section>
@@ -234,6 +251,79 @@ function hojeISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+// Converte "DDMMAAAA" (com ou sem barras) em "AAAA-MM-DD"
+function converterDataBRparaISO(digitos) {
+  if (digitos.length !== 8) return null;
+  const dia = digitos.slice(0, 2);
+  const mes = digitos.slice(2, 4);
+  const ano = digitos.slice(4, 8);
+  const d = Number(dia), m = Number(mes);
+  if (d < 1 || d > 31 || m < 1 || m > 12) return null;
+  return `${ano}-${mes}-${dia}`;
+}
+
+function converterISOparaBR(iso) {
+  if (!iso) return "";
+  const [ano, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+// Converte "MMAAAA" em "AAAA-MM"
+function converterMesBRparaISO(digitos) {
+  if (digitos.length !== 6) return null;
+  const mes = digitos.slice(0, 2);
+  const ano = digitos.slice(2, 6);
+  if (Number(mes) < 1 || Number(mes) > 12) return null;
+  return `${ano}-${mes}`;
+}
+
+function converterMesISOparaBR(iso) {
+  if (!iso) return "";
+  const [ano, mes] = iso.split("-");
+  return `${mes}/${ano}`;
+}
+
+// Liga um <input type="date"> a um <input type="text"> ao lado:
+// escolher no calendário atualiza o texto, e digitar 8 dígitos atualiza o calendário.
+function configurarCampoData(idData, idTexto) {
+  const inputData = document.getElementById(idData);
+  const inputTexto = document.getElementById(idTexto);
+
+  inputData.addEventListener("change", () => {
+    inputTexto.value = converterISOparaBR(inputData.value);
+  });
+
+  inputTexto.addEventListener("input", () => {
+    const digitos = inputTexto.value.replace(/\D/g, "").slice(0, 8);
+    inputTexto.value = digitos.length > 4
+      ? `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
+      : digitos.length > 2
+        ? `${digitos.slice(0, 2)}/${digitos.slice(2)}`
+        : digitos;
+
+    const iso = converterDataBRparaISO(digitos);
+    if (iso) inputData.value = iso;
+  });
+}
+
+// Mesma ideia, mas para o campo de mês (MM/AAAA)
+function configurarCampoMes(idMes, idTexto) {
+  const inputMes = document.getElementById(idMes);
+  const inputTexto = document.getElementById(idTexto);
+
+  inputMes.addEventListener("change", () => {
+    inputTexto.value = converterMesISOparaBR(inputMes.value);
+  });
+
+  inputTexto.addEventListener("input", () => {
+    const digitos = inputTexto.value.replace(/\D/g, "").slice(0, 6);
+    inputTexto.value = digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2)}` : digitos;
+
+    const iso = converterMesBRparaISO(digitos);
+    if (iso) inputMes.value = iso;
+  });
 }
 
 function aplicarTema() {
@@ -274,6 +364,18 @@ if (!tg || !tg.initData) {
   document.getElementById("data-relatorio").value = hojeISO();
   document.getElementById("data-resetar").value = hojeISO();
   document.getElementById("mes-relatorio").value = hojeISO().slice(0, 7);
+
+  document.getElementById("data-lancar-texto").value = converterISOparaBR(hojeISO());
+  document.getElementById("data-saldo-texto").value = converterISOparaBR(hojeISO());
+  document.getElementById("data-relatorio-texto").value = converterISOparaBR(hojeISO());
+  document.getElementById("data-resetar-texto").value = converterISOparaBR(hojeISO());
+  document.getElementById("mes-relatorio-texto").value = converterMesISOparaBR(hojeISO().slice(0, 7));
+
+  configurarCampoData("data-lancar", "data-lancar-texto");
+  configurarCampoData("data-saldo", "data-saldo-texto");
+  configurarCampoData("data-relatorio", "data-relatorio-texto");
+  configurarCampoData("data-resetar", "data-resetar-texto");
+  configurarCampoMes("mes-relatorio", "mes-relatorio-texto");
 }
 
 // --- abas ---
@@ -356,6 +458,7 @@ document.getElementById("form-lancar").addEventListener("submit", async (ev) => 
       mostrarAviso(resposta.texto);
       document.getElementById("form-lancar").reset();
       document.getElementById("data-lancar").value = hojeISO();
+      document.getElementById("data-lancar-texto").value = converterISOparaBR(hojeISO());
     } else {
       mostrarAviso("Erro: " + resposta.erro);
     }
